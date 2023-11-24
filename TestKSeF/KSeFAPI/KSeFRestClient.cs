@@ -5,11 +5,8 @@
 
 #nullable disable
 
-using System;
-using System.IO;
+using System.Text;
 using System.Text.Json;
-using System.Threading;
-using System.Threading.Tasks;
 using Azure;
 using Azure.Core;
 using Azure.Core.Pipeline;
@@ -57,7 +54,8 @@ namespace KSeFAPI
             // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             var content = new Utf8JsonRequestContent();
             content.JsonWriter.WriteObjectValue(body);
-            request.Content = content;
+
+            request.Content = RequestContent.Create(Encoding.UTF8.GetBytes("")); ;
             return message;
         }
 
@@ -387,8 +385,8 @@ namespace KSeFAPI
             request.Uri = uri;
             request.Headers.Add("Accept", "application/json");
             request.Headers.Add("Content-Type", "application/octet-stream");
-            foreach(var itm in HeaderEntryList)
-                request.Headers.Add(itm.Key, itm.Value);    
+            foreach (var itm in HeaderEntryList)
+                request.Headers.Add(itm.Key, itm.Value);
             request.Content = RequestContent.Create(data);
             return message;
         }
@@ -1004,7 +1002,7 @@ namespace KSeFAPI
         /// <param name="cancellationToken"> The cancellation token to use. </param>
         /// <exception cref="ArgumentNullException"> <paramref name="kSeFReferenceNumber"/> is null. </exception>
 // ====================================
-        public Response<object> OnlineInvoiceGet(string kSeFReferenceNumber, 
+        public Response<object> OnlineInvoiceGet(string kSeFReferenceNumber,
             CancellationToken cancellationToken = default)
         {
             if (kSeFReferenceNumber == null)
@@ -1539,8 +1537,8 @@ namespace KSeFAPI
         /// <param name="cancellationToken"> The cancellation token to use. </param>
         /// <exception cref="ArgumentNullException"> <paramref name="queryElementReferenceNumber"/> or <paramref name="partElementReferenceNumber"/> is null. </exception>
         // ===========================
-        public Response<ExceptionResponse> OnlineQueryInvoiceFetch(string queryElementReferenceNumber, string partElementReferenceNumber, 
-                                string FileName, 
+        public Response<ExceptionResponse> OnlineQueryInvoiceFetch(string queryElementReferenceNumber, string partElementReferenceNumber,
+                                string FileName,
                                 CancellationToken cancellationToken = default)
         // ===========================
         {
@@ -1775,7 +1773,11 @@ namespace KSeFAPI
             // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             var content = new Utf8JsonRequestContent();
             content.JsonWriter.WriteObjectValue(body);
-            request.Content = content;
+
+            //"queryCriteria": { "subjectType": "subject1", "type": "incremental", "acquisitionTimestampThresholdFrom": "2023-10-04T09:05:00////+02:00", "acquisitionTimestampThresholdTo": "2023-10-04T09:50:00+02:00" }
+
+            request.Content = RequestContent.Create(Encoding.UTF8.GetBytes(
+            "{\"queryCriteria\": { \"subjectType\": \"subject1\",\"type\": \"incremental\",\"acquisitionTimestampThresholdFrom\": \"2023-11-01T09:05:00+02:00\",\"acquisitionTimestampThresholdTo\": \"2023-11-24T19:58:00+02:00\"}}"));
             return message;
         }
 

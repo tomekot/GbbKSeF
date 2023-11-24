@@ -2,13 +2,8 @@
  * Author: Gbb Software 2002
  */
 
-using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
-using System.Threading.Tasks;
 using System.Xml;
 
 namespace TestKSeF
@@ -19,32 +14,27 @@ namespace TestKSeF
         public static byte[] EncryptRSA(byte[] tab, string public_key)
         {
             // public key
-            byte[] PublicKey = Convert.FromBase64String(public_key);
+            var PublicKey = Convert.FromBase64String(public_key);
             //byte[] Exponent = { 1, 0, 1 };
 
 
-            using (RSACryptoServiceProvider RSA = new RSACryptoServiceProvider())
-            {
-                int ReadBytes;
-                RSA.ImportSubjectPublicKeyInfo(PublicKey, out ReadBytes);
+            using var RSA = new RSACryptoServiceProvider();
+            RSA.ImportSubjectPublicKeyInfo(PublicKey, out _);
 
-                var ret = RSA.Encrypt(tab, false);
-                return ret;
-            }
+            var ret = RSA.Encrypt(tab, false);
+            return ret;
         }
 
         public static string Create_EncryptedToken(string Token, string public_key, DateTimeOffset Challenge_Timestamp)
         {
             // Base64(encrypt(public_key, (token + ‘|’ + challenge.getTime).getBytes))
 
-            string s;
-            byte[] tab;
+            var s =
+                // string to encrypt
+                Token + "|" + Challenge_Timestamp.ToUnixTimeMilliseconds().ToString();
 
             // string to encrypt
-            s = Token + "|" + Challenge_Timestamp.ToUnixTimeMilliseconds().ToString();
-
-            // string to encrypt
-            tab = System.Text.ASCIIEncoding.UTF8.GetBytes(s);
+            var tab = Encoding.UTF8.GetBytes(s);
 
             // encrypting
             s = Convert.ToBase64String(EncryptRSA(tab, public_key));
@@ -53,20 +43,32 @@ namespace TestKSeF
 
         }
 
+        public static string GetStringFromMemoryStream(MemoryStream memoryStream)
+        {
+            // Reset the memory stream position to the beginning.
+            memoryStream.Position = 0;
+
+            // Create a StreamReader to read the stream.
+            using StreamReader reader = new StreamReader(memoryStream, Encoding.UTF8);
+            return reader.ReadToEnd();
+        }
+
         public static Stream Create_InitSessionTokenRequest(string Challenge,
                                         string NIP, string EncryptedToken, bool IsFA2)
         {
-            MemoryStream ms = new MemoryStream();
+            var ms = new MemoryStream();
 
-            XmlWriterSettings sett = new XmlWriterSettings();
-            sett.Indent = true;
-            sett.Encoding = Encoding.UTF8;
+            var sett = new XmlWriterSettings
+            {
+                Indent = true,
+                Encoding = Encoding.UTF8
+            };
 
-            XmlWriter w = XmlWriter.Create(ms, sett);
+            var w = XmlWriter.Create(ms, sett);
             w.WriteStartDocument(true);
 
-            string SystemCode = IsFA2 ? "FA (2)" : "FA (1)";
-            string TargetNamespace = IsFA2 ? "http://crd.gov.pl/wzor/2023/06/29/12648/" : "http://crd.gov.pl/wzor/2021/11/29/11089/";
+            var SystemCode = IsFA2 ? "FA (2)" : "FA (1)";
+            var TargetNamespace = IsFA2 ? "http://crd.gov.pl/wzor/2023/06/29/12648/" : "http://crd.gov.pl/wzor/2021/11/29/11089/";
             const string NS2 = "http://ksef.mf.gov.pl/schema/gtw/svc/types/2021/10/01/0001";
             const string NS3 = "http://ksef.mf.gov.pl/schema/gtw/svc/online/auth/request/2021/10/01/0001";
             const string XSI = "http://www.w3.org/2001/XMLSchema-instance";
@@ -125,9 +127,10 @@ namespace TestKSeF
             w.Close();
 
             ms.Position = 0;
+
+            //var s = GetStringFromMemoryStream(ms);
+
             return ms;
-
-
         }
         // ==============================
         // Batch Init
@@ -160,13 +163,15 @@ namespace TestKSeF
             string s;
 
             //System.Text.StringBuilder sb = new();
-            MemoryStream ms = new MemoryStream();
+            var ms = new MemoryStream();
 
-            XmlWriterSettings sett = new XmlWriterSettings();
-            sett.Indent = true;
-            sett.Encoding = Encoding.UTF8;
+            var sett = new XmlWriterSettings
+            {
+                Indent = true,
+                Encoding = Encoding.UTF8
+            };
 
-            XmlWriter w = XmlWriter.Create(ms, sett);
+            var w = XmlWriter.Create(ms, sett);
             w.WriteStartDocument(false);
 
             const string NS = "http://ksef.mf.gov.pl/schema/gtw/svc/batch/init/request/2021/10/01/0001";
@@ -275,7 +280,7 @@ namespace TestKSeF
                     // PackagePartsList
                     w.WriteStartElement("PackagePartsList");
                     {
-                        int OrderNo = 0;
+                        var OrderNo = 0;
                         foreach (var itm in Params.PartFiles)
                         {
                             w.WriteStartElement("PackagePartSignature");
@@ -316,11 +321,9 @@ namespace TestKSeF
 
         public static byte[] CalculateHash(string FullFileName, SHA256 mySHA256, out long Length)
         {
-            using (var f = new System.IO.FileStream(FullFileName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
-            {
-                Length = f.Length;
-                return mySHA256.ComputeHash(f);
-            }
+            using var f = new FileStream(FullFileName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            Length = f.Length;
+            return mySHA256.ComputeHash(f);
         }
 
         //public static byte[] GenerateRandomBytes(int length)
@@ -336,7 +339,7 @@ namespace TestKSeF
 
         public static byte[] CreateCorrection(string InvoiceXML, string NrKSeFFaKorygowanej,  string CorrNumber, string CorrReason)
         {
-            XmlDocument doc = new XmlDocument();
+            var doc = new XmlDocument();
             doc.LoadXml(InvoiceXML);
 
             var Fa = FindChild(doc, doc.DocumentElement, "Fa", false);
@@ -347,23 +350,23 @@ namespace TestKSeF
             var P_1 = FindChild(doc, Fa, "P_1", false)!;
             var P_2 = FindChild(doc, Fa, "P_2", false)!;
             var RodzajFaktury = FindChild(doc, Fa, "RodzajFaktury", false)!;
-            string DataWyst = P_1.InnerText;
-            string Numer = P_2.InnerText;
-            string Rodzaj = RodzajFaktury.InnerText;
+            var DataWyst = P_1.InnerText;
+            var Numer = P_2.InnerText;
+            var Rodzaj = RodzajFaktury.InnerText;
 
             // podmieniamy nagłówek
             P_1.InnerText = DateTime.Today.ToString("yyyy-MM-dd"); // XmlConvert.ToString(DateTime.Today,  XmlDateTimeSerializationMode.Unspecified);
             P_2.InnerText = CorrNumber;
-            string RodzajKor;
+            string rodzajKor;
             switch(Rodzaj)
             {
-                case "VAT": case "KOR": RodzajKor = "KOR"; break;
-                case "ZAL": case "KOR_ZAL": RodzajKor = "KOR_ZAL"; break;
-                case "ROZ": case "KOR_ROZ": RodzajKor = "KOR_ROZ"; break;
+                case "VAT": case "KOR": rodzajKor = "KOR"; break;
+                case "ZAL": case "KOR_ZAL": rodzajKor = "KOR_ZAL"; break;
+                case "ROZ": case "KOR_ROZ": rodzajKor = "KOR_ROZ"; break;
                     default: throw new ApplicationException("Nieobsługiwany rodzaj faktury: " + Rodzaj);
 
             }
-            RodzajFaktury.InnerText = RodzajKor;
+            RodzajFaktury.InnerText = rodzajKor;
 
             // wstawiamy dane o fakturze korygowanej
             FindChild(doc, Fa, "PrzyczynaKorekty", true)!.InnerText = CorrReason;
@@ -394,13 +397,13 @@ namespace TestKSeF
             ChangeSign(doc, Fa, "P_15");
 
             // wiersze
-            var FaWiersze = FindChild(doc, Fa, "FaWiersze", false);
-            if (FaWiersze != null)
+            var faWiersze = FindChild(doc, Fa, "FaWiersze", false);
+            if (faWiersze != null)
             {
-                ChangeSign(doc, FaWiersze, "WartoscWierszyFaktury1");
-                ChangeSign(doc, FaWiersze, "WartoscWierszyFaktury2");
+                ChangeSign(doc, faWiersze, "WartoscWierszyFaktury1");
+                ChangeSign(doc, faWiersze, "WartoscWierszyFaktury2");
 
-                foreach(XmlNode itm0 in FaWiersze.ChildNodes)
+                foreach(XmlNode itm0 in faWiersze.ChildNodes)
                     if (itm0 is XmlElement itm && itm.Name == "FaWiersz")
                     {
                         ChangeSign(doc, itm, "P_8B"); // ilość
@@ -415,29 +418,25 @@ namespace TestKSeF
             }
 
             // rozliczenie
-            var Rozliczenie = FindChild(doc, Fa, "Rozliczenie", false);
-            if (Rozliczenie != null)
+            var rozliczenie = FindChild(doc, Fa, "Rozliczenie", false);
+            if (rozliczenie != null)
             {
-                foreach (XmlNode itm0 in Rozliczenie.ChildNodes)
+                foreach (XmlNode itm0 in rozliczenie.ChildNodes)
                     if (itm0 is XmlElement itm && (itm.Name == "Obciazenia" || itm.Name == "Odliczenia"))
                     {
                         ChangeSign(doc, itm, "Kwota");
                     }
 
-                ChangeSign(doc, FaWiersze, "SumaObciazen");
-                ChangeSign(doc, FaWiersze, "SumaOdliczen");
-                ChangeSign(doc, FaWiersze, "DoZaplaty");
-                ChangeSign(doc, FaWiersze, "DoRozliczenia");
+                ChangeSign(doc, faWiersze, "SumaObciazen");
+                ChangeSign(doc, faWiersze, "SumaOdliczen");
+                ChangeSign(doc, faWiersze, "DoZaplaty");
+                ChangeSign(doc, faWiersze, "DoRozliczenia");
             }
 
 
-            using (var mm = new MemoryStream())
-            {
-                doc.Save(mm);
-                return mm.ToArray();
-            }
-
-
+            using var mm = new MemoryStream();
+            doc.Save(mm);
+            return mm.ToArray();
         }
 
         private static void ChangeSign(XmlDocument doc, XmlElement? parent, string name)
@@ -445,7 +444,7 @@ namespace TestKSeF
             var itm = FindChild(doc, parent, name, false);
             if (itm != null)
             {
-                string s = itm.InnerText.Trim();
+                var s = itm.InnerText.Trim();
                 if (s.StartsWith("-"))
                     s = s[1..];
                 else
@@ -470,7 +469,7 @@ namespace TestKSeF
             if (!CreateIfMissing)
                 return null;
 
-            XmlElement? element = doc.CreateElement(name);
+            var element = doc.CreateElement(name);
             parent.AppendChild(element);
             return element;
         }

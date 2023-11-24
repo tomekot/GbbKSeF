@@ -4,7 +4,6 @@
 
 using Azure;
 using KSeFAPI.Models;
-using System.Globalization;
 using System.Security.Cryptography;
 
 namespace TestKSeF
@@ -18,8 +17,6 @@ namespace TestKSeF
         private KSeFAPI.KSeFRestClient? Client = null;
         private DateTimeOffset Challenge_Timestamp;
 
-
-
         public MainForm()
         {
             InitializeComponent();
@@ -31,15 +28,15 @@ namespace TestKSeF
             configurationBindingSource.DataSource = Program.Configuration.Lines;
 
             // send files
-            this.Invoice1_textBox.Text = Properties.Settings.Default.Invoice1;
+            Invoice1_textBox.Text = Properties.Settings.Default.Invoice1;
 
             // daty
-            this.QueryHeader_FromDate_dateTimePicker.Value = DateTime.Today.AddDays(-1);
-            this.QueryHeader_ToDate_dateTimePicker.Value = DateTime.Today;
+            QueryHeader_FromDate_dateTimePicker.Value = DateTime.Today.AddDays(-1);
+            QueryHeader_ToDate_dateTimePicker.Value = DateTime.Today;
 
             // incremental
-            this.QueryFiles_FromDate_dateTimePicker.Value = DateTime.Now.AddDays(-1);
-            this.QueryFiles_ToDate_dateTimePicker.Value = DateTime.Now;
+            QueryFiles_FromDate_dateTimePicker.Value = DateTime.Now.AddDays(-1);
+            QueryFiles_ToDate_dateTimePicker.Value = DateTime.Now;
 
         }
 
@@ -92,26 +89,26 @@ namespace TestKSeF
         {
             try
             {
-                ConfigurationLine? CurrConf = (ConfigurationLine?)this.Configuration_listBox.SelectedItem;
+                var CurrConf = (ConfigurationLine?)Configuration_listBox.SelectedItem;
                 CreateClient(CurrConf);
                 ArgumentNullException.ThrowIfNull(Client);
                 ArgumentNullException.ThrowIfNull(CurrConf);
 
 
                 // create body
-                var body = new KSeFAPI.Models.AuthorisationChallengeRequest(
-                                    new KSeFAPI.Models.SubjectIdentifierByCompanyType(CurrConf.NIP));
+                var body = new AuthorisationChallengeRequest(
+                                    new SubjectIdentifierByCompanyType(CurrConf.NIP));
 
                 // send
                 var ret = Client.OnlineSessionAuthorisationChallenge(body);
-                if (ret.Value is KSeFAPI.Models.ExceptionResponse ex)
+                if (ret.Value is ExceptionResponse ex)
                     throw ExceptionToEx(ex);
 
                 // process responce
                 var resp = (AuthorisationChallengeResponse)ret.Value;
-                this.Challenge_textBox.Text = resp.Challenge;
+                Challenge_textBox.Text = resp.Challenge;
                 Challenge_Timestamp = resp.Timestamp;
-                this.Timestamp_textBox.Text = Challenge_Timestamp.LocalDateTime.ToString();
+                Timestamp_textBox.Text = Challenge_Timestamp.LocalDateTime.ToString();
             }
             catch (Exception ex)
             {
@@ -125,24 +122,24 @@ namespace TestKSeF
             {
                 ArgumentNullException.ThrowIfNull(Client);
 
-                ConfigurationLine CurrConf = (ConfigurationLine)this.Configuration_listBox.SelectedItem;
-                bool IsFA2 = this.FA2.Checked;
+                var CurrConf = (ConfigurationLine)Configuration_listBox.SelectedItem;
+                var IsFA2 = FA2.Checked;
 
                 // create encrypted token
-                string EncryptedToken = KSeFHelpers.Create_EncryptedToken(CurrConf.Token, CurrConf.PublicKey, Challenge_Timestamp);
+                var EncryptedToken = KSeFHelpers.Create_EncryptedToken(CurrConf.Token, CurrConf.PublicKey, Challenge_Timestamp);
 
                 // create InitSessionTokenRequest
-                Stream body = KSeFHelpers.Create_InitSessionTokenRequest(this.Challenge_textBox.Text, CurrConf.NIP, EncryptedToken, IsFA2);
+                var body = KSeFHelpers.Create_InitSessionTokenRequest(Challenge_textBox.Text, CurrConf.NIP, EncryptedToken, IsFA2);
 
                 // call
                 var ret = Client.OnlineSessionTokenInit(body);
-                if (ret.Value is KSeFAPI.Models.ExceptionResponse ex)
+                if (ret.Value is ExceptionResponse ex)
                     throw ExceptionToEx(ex);
 
 
                 var resp = (InitSessionResponse)ret.Value;
-                this.TokenSesji_textBox.Text = resp.SessionToken.Token;
-                this.ReferenceNo_textBox.Text = resp.ReferenceNumber;
+                TokenSesji_textBox.Text = resp.SessionToken.Token;
+                ReferenceNo_textBox.Text = resp.ReferenceNumber;
 
                 // session token for other function calls
                 Client.OurSessionToken = resp.SessionToken.Token;
@@ -165,14 +162,14 @@ namespace TestKSeF
                 ArgumentNullException.ThrowIfNull(Client);
 
                 // call
-                var ret = Client.OnlineSessionStatusReferenceNumber(this.ReferenceNo_textBox.Text, 20, 0);
-                if (ret.Value is KSeFAPI.Models.ExceptionResponse ex)
+                var ret = Client.OnlineSessionStatusReferenceNumber(ReferenceNo_textBox.Text, 20, 0);
+                if (ret.Value is ExceptionResponse ex)
                     throw ExceptionToEx(ex);
 
 
                 var resp = (SessionStatusResponse)ret.Value;
 
-                System.Text.StringBuilder sb = new System.Text.StringBuilder();
+                var sb = new System.Text.StringBuilder();
                 sb.Append(resp.ProcessingCode);
                 sb.Append(": ");
                 sb.AppendLine(resp.ProcessingDescription);
@@ -201,7 +198,7 @@ namespace TestKSeF
                     }
                 }
 
-                this.Status_textBox.Text = sb.ToString();
+                Status_textBox.Text = sb.ToString();
 
             }
             catch (Exception ex)
@@ -218,32 +215,32 @@ namespace TestKSeF
             {
                 if (Client == null)
                 {
-                    ConfigurationLine CurrConf = (ConfigurationLine)this.Configuration_listBox.SelectedItem;
+                    var CurrConf = (ConfigurationLine)Configuration_listBox.SelectedItem;
                     CreateClient(CurrConf);
                 }
                 ArgumentNullException.ThrowIfNull(Client);
 
                 // call
-                var ret = Client.CommonStatus(this.ReferenceNo_textBox.Text);
-                if (ret.Value is KSeFAPI.Models.ExceptionResponse ex)
+                var ret = Client.CommonStatus(ReferenceNo_textBox.Text);
+                if (ret.Value is ExceptionResponse ex)
                     throw ExceptionToEx(ex);
 
 
                 var resp = (StatusResponse)ret.Value;
 
-                System.Text.StringBuilder sb = new System.Text.StringBuilder();
+                var sb = new System.Text.StringBuilder();
                 sb.Append(resp.ProcessingCode);
                 sb.Append(": ");
                 sb.AppendLine(resp.ProcessingDescription);
                 sb.AppendLine("UPO: ");
                 if (!string.IsNullOrWhiteSpace(resp.Upo))
                 {
-                    byte[] buf = Convert.FromBase64String(resp.Upo);
-                    string s = System.Text.UTF8Encoding.UTF8.GetString(buf);
+                    var buf = Convert.FromBase64String(resp.Upo);
+                    var s = System.Text.Encoding.UTF8.GetString(buf);
                     sb.AppendLine(s);
                 }
 
-                this.Status_textBox.Text = sb.ToString();
+                Status_textBox.Text = sb.ToString();
 
             }
             catch (Exception ex)
@@ -260,7 +257,7 @@ namespace TestKSeF
 
                 // call
                 var ret = Client.OnlineSessionTerminate();
-                if (ret.Value is KSeFAPI.Models.ExceptionResponse ex)
+                if (ret.Value is ExceptionResponse ex)
                     throw ExceptionToEx(ex);
 
 
@@ -283,11 +280,11 @@ namespace TestKSeF
             try
             {
                 OpenFileDialog dlg = new();
-                dlg.FileName = this.Invoice1_textBox.Text;
+                dlg.FileName = Invoice1_textBox.Text;
                 dlg.DefaultExt = ".xml";
                 dlg.Filter = "Pliki .xml|*.xml";
                 if (dlg.ShowDialog(this) == DialogResult.OK)
-                    this.Invoice1_textBox.Text = dlg.FileName;
+                    Invoice1_textBox.Text = dlg.FileName;
             }
             catch (Exception ex)
             {
@@ -304,7 +301,7 @@ namespace TestKSeF
             {
                 ArgumentNullException.ThrowIfNull(Client);
 
-                Properties.Settings.Default.Invoice1 = this.Invoice1_textBox.Text;
+                Properties.Settings.Default.Invoice1 = Invoice1_textBox.Text;
                 Properties.Settings.Default.Save();
 
                 // get file and it's hash
@@ -312,10 +309,10 @@ namespace TestKSeF
                 int FileSize;
                 byte[] FileBody;
 
-                FileBody = File.ReadAllBytes(this.Invoice1_textBox.Text);
+                FileBody = File.ReadAllBytes(Invoice1_textBox.Text);
                 FileSize = FileBody.Length;
 
-                using (SHA256 mySHA256 = SHA256.Create())
+                using (var mySHA256 = SHA256.Create())
                 {
                     Hash = Convert.ToBase64String(mySHA256.ComputeHash(FileBody));
                 }
@@ -329,12 +326,12 @@ namespace TestKSeF
                             new InvoicePayloadPlainType(Convert.ToBase64String(FileBody))
                             )
                         );
-                if (ret.Value is KSeFAPI.Models.ExceptionResponse ex)
+                if (ret.Value is ExceptionResponse ex)
                     throw ExceptionToEx(ex);
 
 
                 var resp = (SendInvoiceResponse)ret.Value;
-                this.Invoice1_RefNo_textBox.Text = resp.ElementReferenceNumber;
+                Invoice1_RefNo_textBox.Text = resp.ElementReferenceNumber;
 
             }
             catch (Exception ex)
@@ -350,14 +347,14 @@ namespace TestKSeF
                 ArgumentNullException.ThrowIfNull(Client);
 
                 // call
-                var ret = Client.OnlineInvoiceStatus(this.Invoice1_RefNo_textBox.Text);
-                if (ret.Value is KSeFAPI.Models.ExceptionResponse ex)
+                var ret = Client.OnlineInvoiceStatus(Invoice1_RefNo_textBox.Text);
+                if (ret.Value is ExceptionResponse ex)
                     throw ExceptionToEx(ex);
 
 
                 var resp = (StatusInvoiceResponse)ret.Value;
 
-                System.Text.StringBuilder sb = new System.Text.StringBuilder();
+                var sb = new System.Text.StringBuilder();
                 sb.Append(resp.ProcessingCode);
                 sb.Append(": ");
                 sb.AppendLine(resp.ProcessingDescription);
@@ -369,7 +366,7 @@ namespace TestKSeF
                 if (resp.InvoiceStatus.AcquisitionTimestamp != null)
                     sb.Append(resp.InvoiceStatus.AcquisitionTimestamp.Value.ToLocalTime().ToString());
 
-                this.InvoiceStatus_textBox.Text = sb.ToString();
+                InvoiceStatus_textBox.Text = sb.ToString();
 
             }
             catch (Exception ex)
@@ -384,16 +381,16 @@ namespace TestKSeF
                 ArgumentNullException.ThrowIfNull(Client);
 
                 // call
-                var ret = Client.OnlineInvoiceGet(this.KSefRefNo_textBox.Text);
-                if (ret.Value is KSeFAPI.Models.ExceptionResponse ex)
+                var ret = Client.OnlineInvoiceGet(KSefRefNo_textBox.Text);
+                if (ret.Value is ExceptionResponse ex)
                     throw ExceptionToEx(ex);
 
 
                 var resp = (string)ret.Value;
-                this.GetInvoice1_textBox.Text = resp;
+                GetInvoice1_textBox.Text = resp;
 
-                if (!string.IsNullOrWhiteSpace(this.GetInvoice1_textBox.Text))
-                    File.WriteAllText(this.GetInvoice1_textBox.Text, resp);
+                if (!string.IsNullOrWhiteSpace(GetInvoice1_textBox.Text))
+                    File.WriteAllText(GetInvoice1_textBox.Text, resp);
 
             }
             catch (Exception ex)
@@ -407,11 +404,11 @@ namespace TestKSeF
             try
             {
                 SaveFileDialog dlg = new();
-                dlg.FileName = this.GetInvoice_FileName_textBox.Text;
+                dlg.FileName = GetInvoice_FileName_textBox.Text;
                 dlg.DefaultExt = ".xml";
                 dlg.Filter = "Pliki .xml|*.xml";
                 if (dlg.ShowDialog(this) == DialogResult.OK)
-                    this.GetInvoice_FileName_textBox.Text = dlg.FileName;
+                    GetInvoice_FileName_textBox.Text = dlg.FileName;
             }
             catch (Exception ex)
             {
@@ -427,27 +424,27 @@ namespace TestKSeF
                 ArgumentNullException.ThrowIfNull(Client);
 
                 // call
-                var ret = Client.OnlineInvoiceGet(this.KSefRefNo_textBox.Text);
-                if (ret.Value is KSeFAPI.Models.ExceptionResponse ex)
+                var ret = Client.OnlineInvoiceGet(KSefRefNo_textBox.Text);
+                if (ret.Value is ExceptionResponse ex)
                     throw ExceptionToEx(ex);
 
 
                 var resp = (string)ret.Value;
 
                 // create correction invoice
-                byte[] buf = KSeFHelpers.CreateCorrection(resp,
-                                                this.KSefRefNo_textBox.Text,
-                                                this.GetInvoice1_CorrNumber_textBox.Text, this.GetInvoice1_CorrReason_textBox.Text);
+                var buf = KSeFHelpers.CreateCorrection(resp,
+                                                KSefRefNo_textBox.Text,
+                                                GetInvoice1_CorrNumber_textBox.Text, GetInvoice1_CorrReason_textBox.Text);
 
 
                 // show result
-                this.GetInvoice1_textBox.Text = System.Text.UTF8Encoding.UTF8.GetString(buf);
+                GetInvoice1_textBox.Text = System.Text.Encoding.UTF8.GetString(buf);
 
                 // save result
-                if (!string.IsNullOrWhiteSpace(this.GetInvoice_FileName_textBox.Text))
+                if (!string.IsNullOrWhiteSpace(GetInvoice_FileName_textBox.Text))
                 {
-                    File.WriteAllBytes(this.GetInvoice_FileName_textBox.Text, buf);
-                    this.Invoice1_textBox.Text = this.GetInvoice_FileName_textBox.Text; // prepare to resend to KSeF
+                    File.WriteAllBytes(GetInvoice_FileName_textBox.Text, buf);
+                    Invoice1_textBox.Text = GetInvoice_FileName_textBox.Text; // prepare to resend to KSeF
                 }
 
             }
@@ -476,28 +473,28 @@ namespace TestKSeF
                 ArgumentNullException.ThrowIfNull(Client);
 
                 QueryCriteriaInvoiceTypeSubjectType subjectType;
-                if (this.QueryHeader_Subject1_radioButton.Checked)
+                if (QueryHeader_Subject1_radioButton.Checked)
                     subjectType = QueryCriteriaInvoiceTypeSubjectType.Subject1;
                 else
                     subjectType = QueryCriteriaInvoiceTypeSubjectType.Subject2;
 
                 // call
-                var ret = Client.OnlineQueryInvoice(100, (int)this.QueryHeader_PageNo_numericUpDown.Value,
+                var ret = Client.OnlineQueryInvoice(100, (int)QueryHeader_PageNo_numericUpDown.Value,
                             new QueryInvoiceRequest(
                                     new QueryCriteriaInvoiceRangeType(
                                         subjectType,
-                                        this.QueryHeader_FromDate_dateTimePicker.Value,
-                                        this.QueryHeader_ToDate_dateTimePicker.Value.AddDays(1)
+                                        QueryHeader_FromDate_dateTimePicker.Value,
+                                        QueryHeader_ToDate_dateTimePicker.Value.AddDays(1)
                                         )
                                     )
                             );
-                if (ret.Value is KSeFAPI.Models.ExceptionResponse ex)
+                if (ret.Value is ExceptionResponse ex)
                     throw ExceptionToEx(ex);
 
 
                 var resp = (QueryInvoiceSyncResponse)ret.Value;
 
-                System.Text.StringBuilder sb = new System.Text.StringBuilder();
+                var sb = new System.Text.StringBuilder();
                 sb.Append("NumberOfElements: ");
                 sb.AppendLine(resp.NumberOfElements.ToString());
                 if (resp.NumberOfElements > 0)
@@ -528,7 +525,7 @@ namespace TestKSeF
                     }
                 }
 
-                this.QueryHeader_textBox.Text = sb.ToString();
+                QueryHeader_textBox.Text = sb.ToString();
 
             }
             catch (Exception ex)
@@ -548,17 +545,17 @@ namespace TestKSeF
                                 new QueryInvoiceRequest(
                                     new QueryCriteriaInvoiceIncrementalType(
                                         QueryCriteriaInvoiceTypeSubjectType.Subject2,
-                                        this.QueryFiles_FromDate_dateTimePicker.Value,
-                                        this.QueryFiles_ToDate_dateTimePicker.Value
+                                        QueryFiles_FromDate_dateTimePicker.Value,
+                                        QueryFiles_ToDate_dateTimePicker.Value
                                         )
                                     )
                                 );
-                if (ret.Value is KSeFAPI.Models.ExceptionResponse ex)
+                if (ret.Value is ExceptionResponse ex)
                     throw ExceptionToEx(ex);
 
 
                 var resp = (QueryInvoiceAsyncInitResponse)ret.Value;
-                this.QueryFiles_RefNo_textBox.Text = resp.ElementReferenceNumber;
+                QueryFiles_RefNo_textBox.Text = resp.ElementReferenceNumber;
 
             }
             catch (Exception ex)
@@ -576,14 +573,14 @@ namespace TestKSeF
                 ArgumentNullException.ThrowIfNull(Client);
 
                 // call
-                var ret = Client.OnlineQueryInvoiceStatus(this.QueryFiles_RefNo_textBox.Text);
-                if (ret.Value is KSeFAPI.Models.ExceptionResponse ex)
+                var ret = Client.OnlineQueryInvoiceStatus(QueryFiles_RefNo_textBox.Text);
+                if (ret.Value is ExceptionResponse ex)
                     throw ExceptionToEx(ex);
 
 
                 var resp = (QueryInvoiceAsyncStatusResponse)ret.Value;
 
-                System.Text.StringBuilder sb = new System.Text.StringBuilder();
+                var sb = new System.Text.StringBuilder();
                 sb.Append(resp.ProcessingCode);
                 sb.Append(": ");
                 sb.AppendLine(resp.ProcessingDescription);
@@ -615,7 +612,7 @@ namespace TestKSeF
                     }
                 }
 
-                this.QueryFiles_Status_textBox.Text = sb.ToString();
+                QueryFiles_Status_textBox.Text = sb.ToString();
 
             }
             catch (Exception ex)
@@ -629,11 +626,11 @@ namespace TestKSeF
             try
             {
                 SaveFileDialog dlg = new();
-                dlg.FileName = this.QueryFiles_File_textBox.Text;
+                dlg.FileName = QueryFiles_File_textBox.Text;
                 dlg.DefaultExt = ".zip";
                 dlg.Filter = "Plik .zip|*.zip";
                 if (dlg.ShowDialog(this) == DialogResult.OK)
-                    this.QueryFiles_File_textBox.Text = dlg.FileName;
+                    QueryFiles_File_textBox.Text = dlg.FileName;
             }
             catch (Exception ex)
             {
@@ -649,59 +646,49 @@ namespace TestKSeF
                 ArgumentNullException.ThrowIfNull(Client);
 
                 // call
-                var ret = Client.OnlineQueryInvoiceStatus(this.QueryFiles_RefNo_textBox.Text);
-                if (ret.Value is KSeFAPI.Models.ExceptionResponse ex)
+                var ret = Client.OnlineQueryInvoiceStatus(QueryFiles_RefNo_textBox.Text);
+                if (ret.Value is ExceptionResponse ex)
                     throw ExceptionToEx(ex);
 
 
                 var resp = (QueryInvoiceAsyncStatusResponse)ret.Value;
-                this.QueryFiles_Status_textBox.Text = $"NumberOfElements={resp.NumberOfElements}\r\nNumberOfParts={resp.NumberOfParts}\r\n";
+                QueryFiles_Status_textBox.Text = $"NumberOfElements={resp.NumberOfElements}\r\nNumberOfParts={resp.NumberOfParts}\r\n";
 
 
                 if (resp.NumberOfElements == 0)
                     throw new ApplicationException("No files, yes");
 
-                using (SHA256 mySHA256 = SHA256.Create())
+                using var mySHA256 = SHA256.Create();
+                var PartNo = 0;
+                foreach (var itm in resp.PartList)
                 {
-                    int PartNo = 0;
-                    foreach (var itm in resp.PartList)
-                    {
-                        PartNo++;
-                        this.QueryFiles_Status_textBox.AppendText($"PartNo={PartNo}\r\n");
+                    PartNo++;
+                    QueryFiles_Status_textBox.AppendText($"PartNo={PartNo}\r\n");
 
-                        // file name
-                        string FileName = this.QueryFiles_File_textBox.Text;
-                        string path = Path.GetDirectoryName(FileName) ?? "";
-                        string? Name = Path.GetFileNameWithoutExtension(FileName);
-                        string Ext = Path.GetExtension(FileName);
-                        FileName = Path.Combine(path, Name + "_" + PartNo + Ext);
+                    // file name
+                    var FileName = QueryFiles_File_textBox.Text;
+                    var path = Path.GetDirectoryName(FileName) ?? "";
+                    var Name = Path.GetFileNameWithoutExtension(FileName);
+                    var Ext = Path.GetExtension(FileName);
+                    FileName = Path.Combine(path, Name + "_" + PartNo + Ext);
 
 
-                        // download
-                        var ret2 = Client.OnlineQueryInvoiceFetch(this.QueryFiles_RefNo_textBox.Text, itm.PartReferenceNumber, FileName);
-                        if (ret2.Value is KSeFAPI.Models.ExceptionResponse ex2)
-                            throw ExceptionToEx(ex2);
+                    // download
+                    var ret2 = Client.OnlineQueryInvoiceFetch(QueryFiles_RefNo_textBox.Text, itm.PartReferenceNumber, FileName);
+                    if (ret2.Value is ExceptionResponse ex2)
+                        throw ExceptionToEx(ex2);
 
-                        // hash
-                        if (itm.PlainPartHash.HashSHA.Algorithm != "SHA-256")
-                            throw new ApplicationException("Unknown hash algorithm: " + itm.PlainPartHash.HashSHA.Algorithm);
+                    // hash
+                    if (itm.PlainPartHash.HashSHA.Algorithm != "SHA-256")
+                        throw new ApplicationException("Unknown hash algorithm: " + itm.PlainPartHash.HashSHA.Algorithm);
 
-                        using (var f = new System.IO.FileStream(FileName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
-                        {
-                            var Hash = Convert.ToBase64String(mySHA256.ComputeHash(f));
-                            if (Hash != itm.PlainPartHash.HashSHA.Value)
-                                throw new ApplicationException("Wrong Hash!");
-                        }
-
-                    }
-
-                    MessageBox.Show(this, $"Iloœæ pobranych plików: {PartNo}");
-
+                    using var f = new FileStream(FileName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                    var Hash = Convert.ToBase64String(mySHA256.ComputeHash(f));
+                    if (Hash != itm.PlainPartHash.HashSHA.Value)
+                        throw new ApplicationException("Wrong Hash!");
                 }
 
-
-
-
+                MessageBox.Show(this, $"Iloœæ pobranych plików: {PartNo}");
             }
             catch (Exception ex)
             {
@@ -716,37 +703,37 @@ namespace TestKSeF
         private void Batch_ZipFile_button_Click(object sender, EventArgs e)
         {
             OpenFileDialog dlg = new();
-            dlg.FileName = this.Batch_ZipFile_textBox.Text;
+            dlg.FileName = Batch_ZipFile_textBox.Text;
             dlg.DefaultExt = ".zip";
             dlg.Filter = "Plik .zip|*.zip";
             if (dlg.ShowDialog(this) == DialogResult.OK)
-                this.Batch_ZipFile_textBox.Text = dlg.FileName;
+                Batch_ZipFile_textBox.Text = dlg.FileName;
 
         }
 
         private void Batch_SignFile_button_Click(object sender, EventArgs e)
         {
             OpenFileDialog dlg = new();
-            dlg.FileName = this.Batch_SignFile_textBox.Text;
+            dlg.FileName = Batch_SignFile_textBox.Text;
             dlg.DefaultExt = ".xml";
             dlg.Filter = "Pliki .xml|*.xml";
             if (dlg.ShowDialog(this) == DialogResult.OK)
-                this.Batch_SignFile_textBox.Text = dlg.FileName;
+                Batch_SignFile_textBox.Text = dlg.FileName;
         }
 
         private void Batch_Init_button_Click(object sender, EventArgs e)
         {
             try
             {
-                ConfigurationLine CurrConf = (ConfigurationLine)this.Configuration_listBox.SelectedItem;
+                var CurrConf = (ConfigurationLine)Configuration_listBox.SelectedItem;
                 CreateClient(CurrConf);
                 ArgumentNullException.ThrowIfNull(Client);
 
 
-                string ZipFullName = this.Batch_ZipFile_textBox.Text;
+                var ZipFullName = Batch_ZipFile_textBox.Text;
 
                 // prepare Hash
-                using SHA256 mySHA256 = SHA256.Create();
+                using var mySHA256 = SHA256.Create();
 
                 // calculate Hash of whole zip
                 KSeFHelpers.BatchInit_Params Params = new();
@@ -754,7 +741,7 @@ namespace TestKSeF
                 Params.WholeZip_Name = Path.GetFileName(ZipFullName);
 
                 // prepare AES
-                using Aes cipher = Aes.Create();
+                using var cipher = Aes.Create();
                 cipher.Mode = CipherMode.CBC;  // Ensure the integrity of the ciphertext if using CBC
                 cipher.Padding = PaddingMode.PKCS7;
                 Params.SymetricAES_Key = KSeFHelpers.EncryptRSA(cipher.Key, CurrConf.PublicKey); // key encrypt by RSA and public key
@@ -762,26 +749,26 @@ namespace TestKSeF
 
 
                 // split zip
-                byte[] buf = new byte[1024];
+                var buf = new byte[1024];
                 using (var FromFile = new FileStream(ZipFullName, FileMode.Open, FileAccess.Read))
                 {
                     long Pos = 0;
-                    int OrderNo = 0;
+                    var OrderNo = 0;
                     while (Pos < FromFile.Length)
                     {
 
                         // copy part of file and encrypt 
                         OrderNo++;
-                        string PartFullName = ZipFullName + "." + OrderNo + ".aes";
+                        var PartFullName = ZipFullName + "." + OrderNo + ".aes";
                         using (var ToFile = new FileStream(PartFullName, FileMode.Create))
                         {
                             using var encryptor = cipher.CreateEncryptor();
                             using var csEncrypt = new CryptoStream(ToFile, encryptor, CryptoStreamMode.Write);
 
-                            int KBCounter = (int)this.Batch_MaxSize_numericUpDown.Value;
+                            var KBCounter = (int)Batch_MaxSize_numericUpDown.Value;
                             while (KBCounter > 0) // no more than KBCounter kilobytes
                             {
-                                int r = FromFile.Read(buf, 0, buf.Length);
+                                var r = FromFile.Read(buf, 0, buf.Length);
                                 if (r == 0)
                                     break;
 
@@ -803,10 +790,10 @@ namespace TestKSeF
                 }
 
                 // create file
-                string XmlFileName = ZipFullName + ".xml";
+                var XmlFileName = ZipFullName + ".xml";
                 KSeFHelpers.Create_BatchInitRequest(CurrConf.NIP, Params, XmlFileName);
 
-                this.Batch_SignFile_textBox.Text = XmlFileName;
+                Batch_SignFile_textBox.Text = XmlFileName;
                 MessageBox.Show("Now, please sign file: " + XmlFileName);
 
 
@@ -823,48 +810,45 @@ namespace TestKSeF
         {
             try
             {
-                ConfigurationLine CurrConf = (ConfigurationLine)this.Configuration_listBox.SelectedItem;
+                var CurrConf = (ConfigurationLine)Configuration_listBox.SelectedItem;
                 CreateClient(CurrConf);
                 ArgumentNullException.ThrowIfNull(Client);
 
                 // parameters
-                string path = Path.GetDirectoryName(this.Batch_SignFile_textBox.Text) ?? "";
+                var path = Path.GetDirectoryName(Batch_SignFile_textBox.Text) ?? "";
 
                 // call
                 Response<object> ret;
-                using (var XmlFile = new FileStream(this.Batch_SignFile_textBox.Text, FileMode.Open, FileAccess.Read))
+                using (var XmlFile = new FileStream(Batch_SignFile_textBox.Text, FileMode.Open, FileAccess.Read))
                 {
                     ret = Client.BatchInit(XmlFile);
-                    if (ret.Value is KSeFAPI.Models.ExceptionResponse ex1)
+                    if (ret.Value is ExceptionResponse ex1)
                         throw ExceptionToEx(ex1);
                 }
 
                 var resp = (InitResponse)ret.Value;
                 Challenge_Timestamp = resp.Timestamp;
-                this.ReferenceNo_textBox.Text = resp.ReferenceNumber;
+                ReferenceNo_textBox.Text = resp.ReferenceNumber;
 
                 // upload
                 foreach (var itm in resp.PackageSignature.PackagePartSignatureList)
                 {
-                    string FileName = Path.Combine(path, itm.PartFileName);
+                    var FileName = Path.Combine(path, itm.PartFileName);
+                    using var XmlFile = new FileStream(FileName, FileMode.Open, FileAccess.Read);
+                    string PartNumber;
+                    var i = itm.Url.LastIndexOf("/");
+                    PartNumber = itm.Url.Substring(i + 1);
 
-                    using (var XmlFile = new FileStream(FileName, FileMode.Open, FileAccess.Read))
-                    {
-                        string PartNumber;
-                        int i = itm.Url.LastIndexOf("/");
-                        PartNumber = itm.Url.Substring(i + 1);
-
-                        ret = Client.BatchUpload(resp.ReferenceNumber, PartNumber, itm.HeaderEntryList, XmlFile);
-                        if (ret.Value is KSeFAPI.Models.ExceptionResponse ex2)
-                            throw ExceptionToEx(ex2);
-                    }
+                    ret = Client.BatchUpload(resp.ReferenceNumber, PartNumber, itm.HeaderEntryList, XmlFile);
+                    if (ret.Value is ExceptionResponse ex2)
+                        throw ExceptionToEx(ex2);
                 }
 
                 // finish
                 ret = Client.BatchFinish(
                         new FinishRequest(resp.Timestamp, resp.ReferenceNumber)
                     );
-                if (ret.Value is KSeFAPI.Models.ExceptionResponse ex)
+                if (ret.Value is ExceptionResponse ex)
                     throw ExceptionToEx(ex);
 
                 MessageBox.Show(this, "Send!");
@@ -888,7 +872,7 @@ namespace TestKSeF
         private Exception ExceptionToEx(ExceptionResponse ex)
         {
             System.Text.StringBuilder sb = new();
-            if (ex.Exception != null && ex.Exception.ExceptionDetailList != null)
+            if (ex.Exception is {ExceptionDetailList: not null})
                 foreach (var itm in ex.Exception.ExceptionDetailList)
                 {
                     sb.Append(itm.ExceptionCode);

@@ -3,18 +3,18 @@ namespace TestKSeF
     internal static class Program
     {
 
-        public static Configuration Configuration { get; set; } = new Configuration();
+        public static Configuration Configuration { get; set; } = new();
 
         private static string GetConfigFileName()
         {
-            return System.IO.Path.Combine(GetConfigPath(), "config.xml");
+            return Path.Combine(GetConfigPath(), "config.xml");
         }
 
         public static string GetConfigPath()
         {
-            string ret = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Gbb Software");
-            ret = System.IO.Path.Combine(ret, "GbbKSeF");
-            System.IO.Directory.CreateDirectory(ret);
+            string ret = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Gbb Software");
+            ret = Path.Combine(ret, "GbbKSeF");
+            Directory.CreateDirectory(ret);
             return ret;
         }
 
